@@ -1,0 +1,527 @@
+{{template "layout.html" .}}
+{{define "content"}}
+{{$d := .Data}}
+<h1>系统设置</h1>
+
+<div class="settings-tabs">
+    <a href="/settings?tab=sources" class="tab {{if eq $d.Tab "sources"}}active{{end}}">数据源</a>
+    <a href="/settings?tab=push" class="tab {{if eq $d.Tab "push"}}active{{end}}">推送渠道</a>
+    <a href="/settings?tab=keywords" class="tab {{if eq $d.Tab "keywords"}}active{{end}}">关键词</a>
+    <a href="/settings?tab=runtime" class="tab {{if eq $d.Tab "runtime"}}active{{end}}">运行参数</a>
+    <a href="/settings?tab=advanced" class="tab {{if eq $d.Tab "advanced"}}active{{end}}">高级</a>
+</div>
+
+<div class="settings-form">
+
+{{if eq $d.Tab "sources"}}
+<!-- ==================== 数据源 ==================== -->
+<div class="settings-section">
+    <h3>数据源选择</h3>
+    <p class="settings-hint">勾选需要监控的漏洞数据源（变更需重启生效）</p>
+    <form id="sourceForm">
+    <div class="source-grid">
+        {{range $d.AllSources}}
+        <label class="source-item">
+            <input type="checkbox" name="source_{{.Name}}" value="{{.Name}}" {{if .Enabled}}checked{{end}}>
+            <span>{{.DisplayName}}</span>
+        </label>
+        {{end}}
+    </div>
+    <button type="submit" class="btn" style="margin-top:16px">保存数据源</button>
+    </form>
+</div>
+
+<div class="settings-section">
+    <h3>当前活跃数据源</h3>
+    <table class="vuln-table">
+        <thead><tr><th>名称</th><th>显示名称</th><th>链接</th></tr></thead>
+        <tbody>
+            {{range $d.ProviderStatus}}
+            <tr>
+                <td><code>{{.Name}}</code></td>
+                <td>{{.DisplayName}}</td>
+                <td><a href="{{.Link}}" target="_blank">{{.Link}}</a></td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+{{else if eq $d.Tab "push"}}
+<!-- ==================== 推送渠道 ==================== -->
+<form id="pushForm">
+{{$cfg := $d.PushConfigs}}
+
+<div class="settings-section">
+    <h3>钉钉 (DingTalk)</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Access Token</label>
+            <input type="text" name="push_dingding_token" value="{{if $cfg.dingding}}{{$cfg.dingding.access_token}}{{end}}" placeholder="钉钉机器人 Webhook Token">
+        </div>
+        <div class="form-group">
+            <label>Sign Secret</label>
+            <input type="text" name="push_dingding_secret" value="{{if $cfg.dingding}}{{$cfg.dingding.sign_secret}}{{end}}" placeholder="钉钉机器人加签密钥">
+        </div>
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>企业微信 (WeChat Work)</h3>
+    <div class="form-group">
+        <label>Webhook Key</label>
+        <input type="text" name="push_wechatwork_key" value="{{if $cfg.wechatwork}}{{$cfg.wechatwork.key}}{{end}}" placeholder="企业微信机器人 Webhook Key">
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>飞书 (Lark/Feishu)</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Access Token / Webhook URL</label>
+            <input type="text" name="push_lark_token" value="{{if $cfg.lark}}{{$cfg.lark.access_token}}{{end}}" placeholder="飞书机器人 Webhook Token 或完整 URL">
+        </div>
+        <div class="form-group">
+            <label>Sign Secret</label>
+            <input type="text" name="push_lark_secret" value="{{if $cfg.lark}}{{$cfg.lark.sign_secret}}{{end}}" placeholder="飞书机器人签名密钥">
+        </div>
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>Telegram</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Bot Token</label>
+            <input type="text" name="push_telegram_token" value="{{if $cfg.telegram}}{{$cfg.telegram.bot_token}}{{end}}" placeholder="Telegram Bot Token">
+        </div>
+        <div class="form-group">
+            <label>Chat IDs (逗号分隔)</label>
+            <input type="text" name="push_telegram_chatid" value="{{if $cfg.telegram}}{{$cfg.telegram.chat_ids}}{{end}}" placeholder="例如: 123456,789012">
+        </div>
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>Slack</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Webhook URL</label>
+            <input type="text" name="push_slack_url" value="{{if $cfg.slack}}{{$cfg.slack.webhook_url}}{{end}}" placeholder="Slack Incoming Webhook URL">
+        </div>
+        <div class="form-group">
+            <label>Channel (可选)</label>
+            <input type="text" name="push_slack_channel" value="{{if $cfg.slack}}{{$cfg.slack.channel}}{{end}}" placeholder="#security-vulns">
+        </div>
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>Bark (iOS推送)</h3>
+    <div class="form-group">
+        <label>Server URL</label>
+        <input type="text" name="push_bark_url" value="{{if $cfg.bark}}{{$cfg.bark.url}}{{end}}" placeholder="Bark 服务器地址，例如: http://127.0.0.1:1111/DeviceKey">
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>Server酱</h3>
+    <div class="form-group">
+        <label>Send Key</label>
+        <input type="text" name="push_serverchan_key" value="{{if $cfg.serverchan}}{{$cfg.serverchan.key}}{{end}}" placeholder="Server酱 SendKey">
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>PushPlus</h3>
+    <div class="form-group">
+        <label>Token</label>
+        <input type="text" name="push_pushplus_token" value="{{if $cfg.pushplus}}{{$cfg.pushplus.token}}{{end}}" placeholder="PushPlus Token">
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>Webhook (自定义)</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Webhook URL</label>
+            <input type="text" name="push_webhook_url" value="{{if $cfg.webhook}}{{$cfg.webhook.url}}{{end}}" placeholder="自定义 Webhook 接收地址">
+        </div>
+        <div class="form-group">
+            <label>Secret (可选)</label>
+            <input type="text" name="push_webhook_secret" value="{{if $cfg.webhook}}{{$cfg.webhook.secret}}{{end}}" placeholder="Webhook 密钥">
+        </div>
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>蓝信 (Lanxin)</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Domain</label>
+            <input type="text" name="push_lanxin_domain" value="{{if $cfg.lanxin}}{{$cfg.lanxin.domain}}{{end}}" placeholder="蓝信域名，例如: https://apigw-example.domain">
+        </div>
+        <div class="form-group">
+            <label>Hook Token</label>
+            <input type="text" name="push_lanxin_token" value="{{if $cfg.lanxin}}{{$cfg.lanxin.access_token}}{{end}}" placeholder="蓝信 Hook Token">
+        </div>
+        <div class="form-group">
+            <label>Sign Secret</label>
+            <input type="text" name="push_lanxin_secret" value="{{if $cfg.lanxin}}{{$cfg.lanxin.sign_secret}}{{end}}" placeholder="蓝信签名密钥">
+        </div>
+    </div>
+</div>
+
+<button type="submit" class="btn">保存推送配置</button>
+</form>
+
+{{else if eq $d.Tab "keywords"}}
+<!-- ==================== 关键词过滤 ==================== -->
+<form id="keywordsForm">
+<div class="settings-section">
+    <h3>白名单关键词</h3>
+    <p class="settings-hint">漏洞标题或描述包含白名单关键词才会推送（每行一个关键词，留空则不限制）</p>
+    <textarea name="white_keywords" rows="6" placeholder="Apache&#10;泛微&#10;致远">{{range $d.WhiteKeywords}}{{.}}&#10;{{end}}</textarea>
+</div>
+
+<div class="settings-section">
+    <h3>黑名单关键词</h3>
+    <p class="settings-hint">漏洞标题包含黑名单关键词则不推送（每行一个关键词，留空则不限制）</p>
+    <textarea name="black_keywords" rows="6" placeholder="测试&#10;样本">{{range $d.BlackKeywords}}{{.}}&#10;{{end}}</textarea>
+</div>
+
+<button type="submit" class="btn">保存关键词配置</button>
+</form>
+
+{{else if eq $d.Tab "runtime"}}
+<!-- ==================== 运行参数 ==================== -->
+<form id="runtimeForm">
+<div class="settings-section">
+    <h3>调度参数</h3>
+    <div class="form-group">
+        <label>检查间隔 (interval)</label>
+        <input type="text" name="interval" value="{{$d.Interval}}" placeholder="例如: 30m, 1h">
+        <p class="settings-hint">两次漏洞检查之间的间隔时间，支持格式: 30s, 30m, 1h</p>
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>过滤设置</h3>
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="enable_cve_filter" {{if $d.EnableCVEFilter}}checked{{end}}>
+            启用 CVE 跨源去重 (同一CVE多源仅推送一次)
+        </label>
+    </div>
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="no_filter" {{if $d.NoFilter}}checked{{end}}>
+            关闭价值筛选 (推送所有发现的漏洞，不区分等级)
+        </label>
+    </div>
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="no_github_search" {{if $d.NoGithubSearch}}checked{{end}}>
+            禁用 GitHub PoC 搜索
+        </label>
+    </div>
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="no_sleep" {{if $d.NoSleep}}checked{{end}}>
+            禁用夜间休眠
+        </label>
+    </div>
+    <div class="form-group">
+        <label>休眠时间段（不推送消息的时间范围）</label>
+        <div id="sleepRangesList" style="margin: 8px 0;">
+            {{range $d.SleepRanges}}
+            <div class="sleep-range-item" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                <input type="time" name="sleep_start" value="{{.Start}}" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+                <span>至</span>
+                <input type="time" name="sleep_end" value="{{.End}}" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="window.removeSleepRange(this)" style="padding:4px 8px;">删除</button>
+            </div>
+            {{end}}
+        </div>
+        <button type="button" id="addSleepRange" class="btn btn-outline btn-sm" onclick="window.addSleepRange()">添加时间段</button>
+    </div>
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="no_start_message" {{if $d.NoStartMessage}}checked{{end}}>
+            禁用启动推送消息
+        </label>
+    </div>
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="diff_mode" {{if $d.DiffMode}}checked{{end}}>
+            差异模式 (跳过初始建库，直接推送增量后退出)
+        </label>
+    </div>
+</div>
+
+<button type="submit" class="btn">保存运行参数</button>
+</form>
+
+{{else if eq $d.Tab "advanced"}}
+<!-- ==================== 高级 ==================== -->
+<div class="settings-section">
+    <h3>数据库连接</h3>
+    <div class="form-group">
+        <label>DB Connection String</label>
+        <input type="text" value="{{$d.DBConn}}" readonly style="background:#f3f4f6;font-family:monospace;font-size:13px">
+        <p class="settings-hint">当前使用的数据库连接（修改请通过配置文件或命令行参数）</p>
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>网络设置</h3>
+    <div class="form-group">
+        <label>代理 (Proxy)</label>
+        <input type="text" value="{{$d.Proxy}}" readonly style="background:#f3f4f6;font-family:monospace;font-size:13px">
+        <p class="settings-hint">当前使用的代理地址，支持 http(s):// 或 socks5://</p>
+    </div>
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" disabled {{if $d.SkipTLSVerify}}checked{{end}}>
+            跳过 TLS 证书验证
+        </label>
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>修改密码</h3>
+    <form id="passwordForm">
+        <div class="form-row">
+            <div class="form-group">
+                <label>原密码</label>
+                <input type="password" name="old_password" placeholder="请输入原密码" required>
+            </div>
+            <div class="form-group">
+                <label>新密码</label>
+                <input type="password" name="new_password" placeholder="请输入新密码（至少6位）" required>
+            </div>
+        </div>
+        <button type="submit" class="btn">修改密码</button>
+    </form>
+</div>
+
+<div class="settings-section">
+    <h3>当前推送渠道列表</h3>
+    <p class="settings-hint">以下是通过配置文件或命令行配置的推送渠道（只读）</p>
+    <table class="vuln-table">
+        <thead><tr><th>类型</th><th>配置详情</th></tr></thead>
+        <tbody>
+            {{range $d.PusherConfig}}
+            <tr>
+                <td><strong>{{.type}}</strong></td>
+                <td>
+                    {{range $k, $v := .}}
+                    {{if and (ne $k "type") (ne $k "sign_secret") (ne $k "secret")}}<span class="tag">{{$k}}: {{$v}}</span>{{end}}
+                    {{if or (eq $k "sign_secret") (eq $k "secret")}}<span class="tag">{{$k}}: ***</span>{{end}}
+                    {{end}}
+                </td>
+            </tr>
+            {{else}}
+            <tr><td colspan="2" style="text-align:center">暂无推送渠道配置</td></tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}
+
+</div>
+
+<script>
+window.addSleepRange = function() {
+    var list = document.getElementById('sleepRangesList');
+    var item = document.createElement('div');
+    item.className = 'sleep-range-item';
+    item.style = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+    item.innerHTML = '<input type="time" name="sleep_start" value="00:00" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;">' +
+        '<span>至</span>' +
+        '<input type="time" name="sleep_end" value="07:00" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;">' +
+        '<button type="button" class="btn btn-outline btn-sm" onclick="window.removeSleepRange(this)" style="padding:4px 8px;">删除</button>';
+    list.appendChild(item);
+};
+
+window.removeSleepRange = function(btn) {
+    var item = btn.closest('.sleep-range-item');
+    if (item) item.remove();
+};
+
+// --- Source form submit ---
+var sourceForm = document.getElementById('sourceForm');
+if (sourceForm) {
+    sourceForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var sources = [];
+        this.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) { sources.push(cb.value); });
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({sources: sources.join(',')})
+        }).then(function(r) { return r.json(); })
+        .then(function(resp) {
+            alert(resp.data ? resp.data.message : (resp.error || '保存失败'));
+        });
+    });
+}
+
+// --- Push form submit ---
+var pushForm = document.getElementById('pushForm');
+if (pushForm) {
+    pushForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var pushers = [];
+
+        var dingToken = this.querySelector('input[name="push_dingding_token"]').value;
+        var dingSecret = this.querySelector('input[name="push_dingding_secret"]').value;
+        if (dingToken && dingSecret) {
+            pushers.push({type: "dingding", access_token: dingToken, sign_secret: dingSecret});
+        }
+
+        var wxKey = this.querySelector('input[name="push_wechatwork_key"]').value;
+        if (wxKey) {
+            pushers.push({type: "wechatwork", key: wxKey});
+        }
+
+        var larkToken = this.querySelector('input[name="push_lark_token"]').value;
+        var larkSecret = this.querySelector('input[name="push_lark_secret"]').value;
+        if (larkToken && larkSecret) {
+            pushers.push({type: "lark", access_token: larkToken, sign_secret: larkSecret});
+        }
+
+        var tgToken = this.querySelector('input[name="push_telegram_token"]').value;
+        var tgChat = this.querySelector('input[name="push_telegram_chatid"]').value;
+        if (tgToken && tgChat) {
+            pushers.push({type: "telegram", bot_token: tgToken, chat_ids: tgChat});
+        }
+
+        var slackUrl = this.querySelector('input[name="push_slack_url"]').value;
+        var slackChannel = this.querySelector('input[name="push_slack_channel"]').value;
+        if (slackUrl) {
+            var slackCfg = {type: "slack", webhook_url: slackUrl};
+            if (slackChannel) slackCfg.channel = slackChannel;
+            pushers.push(slackCfg);
+        }
+
+        var barkUrl = this.querySelector('input[name="push_bark_url"]').value;
+        if (barkUrl) {
+            pushers.push({type: "bark", url: barkUrl});
+        }
+
+        var scKey = this.querySelector('input[name="push_serverchan_key"]').value;
+        if (scKey) {
+            pushers.push({type: "serverchan", key: scKey});
+        }
+
+        var ppKey = this.querySelector('input[name="push_pushplus_token"]').value;
+        if (ppKey) {
+            pushers.push({type: "pushplus", token: ppKey});
+        }
+
+        var webhookUrl = this.querySelector('input[name="push_webhook_url"]').value;
+        if (webhookUrl) {
+            pushers.push({type: "webhook", url: webhookUrl});
+        }
+
+        var lxDomain = this.querySelector('input[name="push_lanxin_domain"]').value;
+        var lxToken = this.querySelector('input[name="push_lanxin_token"]').value;
+        var lxSecret = this.querySelector('input[name="push_lanxin_secret"]').value;
+        if (lxDomain && lxToken && lxSecret) {
+            pushers.push({type: "lanxin", domain: lxDomain, access_token: lxToken, sign_secret: lxSecret});
+        }
+
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({pusher: pushers})
+        }).then(function(r) { return r.json(); })
+        .then(function(resp) {
+            alert(resp.data ? resp.data.message : (resp.error || '保存失败'));
+        });
+    });
+}
+
+// --- Runtime form submit ---
+var runtimeForm = document.getElementById('runtimeForm');
+if (runtimeForm) {
+    runtimeForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var sleepRanges = [];
+        document.querySelectorAll('.sleep-range-item').forEach(function(item) {
+            var start = item.querySelector('input[name="sleep_start"]').value;
+            var end = item.querySelector('input[name="sleep_end"]').value;
+            if (start && end) {
+                sleepRanges.push({start: start, end: end});
+            }
+        });
+        var data = {
+            interval: this.querySelector('input[name="interval"]').value,
+            enable_cve_filter: this.querySelector('input[name="enable_cve_filter"]').checked,
+            no_filter: this.querySelector('input[name="no_filter"]').checked,
+            no_github_search: this.querySelector('input[name="no_github_search"]').checked,
+            no_sleep: this.querySelector('input[name="no_sleep"]').checked,
+            sleep_ranges: sleepRanges
+        };
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        }).then(function(r) { return r.json(); })
+        .then(function(resp) {
+            alert(resp.data ? resp.data.message : (resp.error || '保存失败'));
+        });
+    });
+}
+
+// --- Keywords form submit ---
+var keywordsForm = document.getElementById('keywordsForm');
+if (keywordsForm) {
+    keywordsForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var whiteText = this.querySelector('textarea[name="white_keywords"]').value;
+        var blackText = this.querySelector('textarea[name="black_keywords"]').value;
+
+        var whiteKeywords = whiteText.split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+        var blackKeywords = blackText.split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                white_keywords: whiteKeywords,
+                black_keywords: blackKeywords
+            })
+        }).then(function(r) { return r.json(); })
+        .then(function(resp) {
+            alert(resp.data ? resp.data.message : (resp.error || '保存失败'));
+        });
+    });
+}
+
+// --- Password form submit ---
+var passwordForm = document.getElementById('passwordForm');
+if (passwordForm) {
+    passwordForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var oldPassword = this.querySelector('input[name="old_password"]').value;
+        var newPassword = this.querySelector('input[name="new_password"]').value;
+        fetch('/api/change-password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                old_password: oldPassword,
+                new_password: newPassword
+            })
+        }).then(function(r) { return r.json(); })
+        .then(function(resp) {
+            alert(resp.data ? resp.data.message : (resp.error || '保存失败'));
+            if (resp.success) {
+                passwordForm.reset();
+            }
+        });
+    });
+}
+</script>
+{{end}}

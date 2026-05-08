@@ -1,0 +1,271 @@
+{{template "layout.html" .}}
+{{define "content"}}
+{{$d := .Data}}
+<div class="page-header">
+    <h1>漏洞监控列表</h1>
+    <span class="toolbar-time">更新: {{$d.Time}}</span>
+</div>
+
+<div class="stats-cards">
+    <div class="stat-card">
+        <div class="stat-value">{{$d.TotalCount}}</div>
+        <div class="stat-label">漏洞总数</div>
+    </div>
+    <div class="stat-card stat-warn">
+        <div class="stat-value">{{$d.TodayCount}}</div>
+        <div class="stat-label">今日新增</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{$d.PushedCount}}</div>
+        <div class="stat-label">已推送</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{$d.UnpushedCount}}</div>
+        <div class="stat-label">未推送</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{$d.Interval}}</div>
+        <div class="stat-label">检查间隔</div>
+    </div>
+</div>
+
+<div class="toolbar">
+    <input type="text" id="filter-search" placeholder="搜索标题 / CVE 编号..." onkeydown="if(event.key==='Enter')doSearch()">
+    <button class="btn btn-primary" onclick="doSearch()">搜索</button>
+    <select id="filter-severity" onchange="doSearch()">
+        <option value="">全部等级</option>
+        <option value="低危">低危</option>
+        <option value="中危">中危</option>
+        <option value="高危">高危</option>
+        <option value="严重">严重</option>
+    </select>
+    <select id="filter-source" onchange="doSearch()">
+        <option value="">全部来源</option>
+        {{range $d.Sources}}<option value="{{.}}">{{.}}</option>{{end}}
+    </select>
+    <select id="filter-pushed" onchange="doSearch()">
+        <option value="">全部状态</option>
+        <option value="true">已推送</option>
+        <option value="false">未推送</option>
+    </select>
+    <input type="date" id="filter-date-from" onchange="doSearch()" title="起始日期">
+    <input type="date" id="filter-date-to" onchange="doSearch()" title="结束日期">
+    <div class="toolbar-actions">
+        <button class="btn" id="collectBtn" onclick="triggerCollect()">手动采集</button>
+        <button class="btn btn-outline" onclick="testPush()">测试推送</button>
+    </div>
+</div>
+
+<div class="list-header">
+    <h3>漏洞列表</h3>
+    <div class="list-actions">
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()">导出 Excel</button>
+        <a href="/api/rss" target="_blank" class="btn btn-outline btn-sm">RSS 订阅</a>
+    </div>
+</div>
+
+<div id="vuln-table-container">
+    <table class="vuln-table">
+        <thead>
+            <tr>
+                <th>标题</th>
+                <th><a href="javascript:void(0)" onclick="doSort('cve')" class="sort-link">CVE ↕</a></th>
+                <th>等级</th>
+                <th>来源</th>
+                <th><a href="javascript:void(0)" onclick="doSort('disclosure')" class="sort-link">披露日期 ↕</a></th>
+                <th><a href="javascript:void(0)" onclick="doSort('create_time')" class="sort-link">添加时间 ↕</a></th>
+                <th>状态</th>
+                <th>标签</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range $d.Vulns}}
+            <tr class="vuln-row" onclick="toggleDetail(this)">
+                <td class="vuln-title">{{.Title}}</td>
+                <td>{{if .Cve}}<a href="https://nvd.nist.gov/vuln/detail/{{.Cve}}" target="_blank" onclick="event.stopPropagation()">{{.Cve}}</a>{{else}}-{{end}}</td>
+                <td><span class="severity severity-{{.Severity}}">{{.Severity}}</span></td>
+                <td class="text-sm">{{.From}}</td>
+                <td>{{.Disclosure}}</td>
+                <td>{{.CreateTime.Format "2006-01-02 15:04"}}</td>
+                <td>{{if .Pushed}}<span class="badge badge-success">已推送</span>{{else}}<span class="badge badge-warn">未推送</span>{{end}}</td>
+                <td>{{range .Tags}}<span class="tag">{{.}}</span>{{end}}</td>
+            </tr>
+            <tr class="vuln-detail" style="display:none">
+                <td colspan="8">
+                    <div class="detail-content">
+                        {{if .Description}}<p><strong>描述:</strong> {{.Description}}</p>{{end}}
+                        {{if .Solutions}}<p><strong>解决方案:</strong> {{.Solutions}}</p>{{end}}
+                        {{if .References}}<p><strong>参考链接:</strong></p><ul>{{range .References}}<li><a href="{{.}}" target="_blank">{{.}}</a></li>{{end}}</ul>{{end}}
+                        {{if .GithubSearch}}<p><strong>Github PoC:</strong></p><ul>{{range .GithubSearch}}<li><a href="{{.}}" target="_blank">{{.}}</a></li>{{end}}</ul>{{end}}
+                    </div>
+                </td>
+            </tr>
+            {{else}}
+            <tr><td colspan="8" style="text-align:center;padding:40px">暂无漏洞数据</td></tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+<div class="pagination" id="pagination">
+    <div class="pagination-inner">
+        <select id="page-size" onchange="changePageSize()" title="每页条数">
+            <option value="20">20条/页</option>
+            <option value="50">50条/页</option>
+            <option value="100">100条/页</option>
+            <option value="200">200条/页</option>
+        </select>
+        <button id="btn-prev" onclick="changePage(-1)">上一页</button>
+        <span id="page-info">第 1 页，共 1 页，共 {{$d.TotalCount}} 条</span>
+        <button id="btn-next" onclick="changePage(1)">下一页</button>
+        <span class="page-jump">
+            跳至 <input type="number" id="jump-page" min="1" value="1" onkeydown="if(event.key==='Enter')jumpPage()"> 页
+            <button onclick="jumpPage()">Go</button>
+        </span>
+    </div>
+</div>
+
+<script>
+var currentPage = 1;
+var pageSize = 20;
+var totalCount = {{$d.TotalCount}};
+var currentSort = 'create_time';
+var currentOrder = 'desc';
+
+function getFilterParams() {
+    var params = [];
+    var search = document.getElementById('filter-search').value;
+    var severity = document.getElementById('filter-severity').value;
+    var source = document.getElementById('filter-source').value;
+    var pushed = document.getElementById('filter-pushed').value;
+    var dateFrom = document.getElementById('filter-date-from').value;
+    var dateTo = document.getElementById('filter-date-to').value;
+    if (search) params.push('search=' + encodeURIComponent(search));
+    if (severity) params.push('severity=' + encodeURIComponent(severity));
+    if (source) params.push('source=' + encodeURIComponent(source));
+    if (pushed) params.push('pushed=' + encodeURIComponent(pushed));
+    if (dateFrom) params.push('date_from=' + encodeURIComponent(dateFrom));
+    if (dateTo) params.push('date_to=' + encodeURIComponent(dateTo));
+    return params.join('&');
+}
+
+function doSort(field) {
+    if (currentSort === field) {
+        currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort = field;
+        currentOrder = 'desc';
+    }
+    currentPage = 1;
+    doSearch(1);
+}
+
+function doSearch(page) {
+    if (!page) page = 1;
+    currentPage = page;
+    var params = 'page=' + page + '&page_size=' + pageSize;
+    var filterParams = getFilterParams();
+    if (filterParams) params += '&' + filterParams;
+    params += '&sort=' + currentSort + '&order=' + currentOrder;
+    fetch('/api/vulns?' + params)
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            if (!resp.success) return;
+            totalCount = resp.total;
+            renderTable(resp.data);
+            renderPagination(resp.page, resp.page_size, resp.total);
+        });
+}
+
+function renderTable(vulns) {
+    var tbody = document.querySelector('.vuln-table tbody');
+    if (!vulns || vulns.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px">暂无漏洞数据</td></tr>';
+        return;
+    }
+    var html = '';
+    for (var i = 0; i < vulns.length; i++) {
+        var v = vulns[i];
+        var cveLink = v.cve ? '<a href="https://nvd.nist.gov/vuln/detail/' + v.cve + '" target="_blank" onclick="event.stopPropagation()">' + v.cve + '</a>' : '-';
+        var sevClass = 'severity severity-' + v.severity;
+        var pushedBadge = v.pushed ? '<span class="badge badge-success">已推送</span>' : '<span class="badge badge-warn">未推送</span>';
+        var tagsHtml = '';
+        if (v.tags && v.tags.length) for (var j = 0; j < v.tags.length; j++) tagsHtml += '<span class="tag">' + he(v.tags[j]) + '</span>';
+        var refsHtml = '';
+        if (v.references && v.references.length) { refsHtml = '<p><strong>参考链接:</strong></p><ul>'; for (var k = 0; k < v.references.length; k++) refsHtml += '<li><a href="' + v.references[k] + '" target="_blank">' + v.references[k] + '</a></li>'; refsHtml += '</ul>'; }
+        var ghHtml = '';
+        if (v.github_search && v.github_search.length) { ghHtml = '<p><strong>Github PoC:</strong></p><ul>'; for (var k = 0; k < v.github_search.length; k++) ghHtml += '<li><a href="' + v.github_search[k] + '" target="_blank">' + v.github_search[k] + '</a></li>'; ghHtml += '</ul>'; }
+        html += '<tr class="vuln-row" onclick="toggleDetail(this)">';
+        var createdAt = v.create_time ? new Date(v.create_time).toLocaleString('zh-CN', {hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'}).replace(/\//g, '-') : '';
+        html += '<td class="vuln-title">' + he(v.title) + '</td><td>' + cveLink + '</td>';
+        html += '<td><span class="' + sevClass + '">' + he(v.severity) + '</span></td>';
+        html += '<td class="text-sm">' + he(v.from || '') + '</td><td>' + (v.disclosure || '') + '</td>';
+        html += '<td>' + createdAt + '</td><td>' + pushedBadge + '</td><td>' + tagsHtml + '</td></tr>';
+        html += '<tr class="vuln-detail" style="display:none"><td colspan="8"><div class="detail-content">';
+        if (v.description) html += '<p><strong>描述:</strong> ' + he(v.description) + '</p>';
+        if (v.solutions) html += '<p><strong>解决方案:</strong> ' + he(v.solutions) + '</p>';
+        html += refsHtml + ghHtml + '</div></td></tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function renderPagination(page, size, total) {
+    var totalPages = Math.ceil(total / size) || 1;
+    document.getElementById('page-info').textContent = '第 ' + page + ' 页，共 ' + totalPages + ' 页，共 ' + total + ' 条';
+    document.getElementById('btn-prev').disabled = (page <= 1);
+    document.getElementById('btn-next').disabled = (page >= totalPages);
+    document.getElementById('jump-page').value = page;
+}
+
+function changePage(delta) { var p = currentPage + delta; var max = Math.ceil(totalCount / pageSize) || 1; if (p < 1) p = 1; if (p > max) p = max; doSearch(p); }
+function changePageSize() { pageSize = parseInt(document.getElementById('page-size').value); currentPage = 1; doSearch(1); }
+function jumpPage() { var p = parseInt(document.getElementById('jump-page').value); var max = Math.ceil(totalCount / pageSize) || 1; if (isNaN(p) || p < 1) p = 1; if (p > max) p = max; document.getElementById('jump-page').value = p; doSearch(p); }
+function toggleDetail(row) { var n = row.nextElementSibling; if (n && n.classList.contains('vuln-detail')) n.style.display = n.style.display === 'none' ? 'table-row' : 'none'; }
+function exportCSV() { window.open('/api/export?format=csv', '_blank'); }
+function he(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function triggerCollect() {
+    var btn = document.getElementById('collectBtn');
+    if (btn.disabled) return;
+    btn.disabled = true; btn.textContent = '采集中...';
+    fetch('/api/trigger-collect', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            if (!resp.success) {
+                alert(resp.error || '请求失败');
+                btn.disabled = false; btn.textContent = '手动采集';
+            } else {
+                btn.textContent = '采集中...';
+                pollCollectStatus();
+            }
+        })
+        .catch(function() { btn.disabled = false; btn.textContent = '手动采集'; });
+}
+
+function pollCollectStatus() {
+    fetch('/api/collect-status')
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            var btn = document.getElementById('collectBtn');
+            if (resp.success && resp.data && resp.data.collecting) {
+                setTimeout(pollCollectStatus, 2000);
+            } else {
+                btn.disabled = false; btn.textContent = '手动采集';
+            }
+        })
+        .catch(function() {
+            var btn = document.getElementById('collectBtn');
+            btn.disabled = false; btn.textContent = '手动采集';
+        });
+}
+
+function testPush() {
+    var btn = event.target;
+    btn.disabled = true; btn.textContent = '推送中...';
+    fetch('/api/test-push', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(resp) { alert(resp.data ? resp.data.message : (resp.error || '请求失败')); btn.disabled = false; btn.textContent = '测试推送'; })
+        .catch(function() { btn.disabled = false; btn.textContent = '测试推送'; });
+}
+</script>
+{{end}}

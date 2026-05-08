@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    {{if .Username}}
+    <div class="app-layout">
+        <header class="topbar">
+            <div class="topbar-brand">
+                <h2>WatchVuln</h2>
+            </div>
+            <nav class="topbar-nav">
+                <a href="/dashboard" class="{{if eq .ActiveNav "dashboard"}}active{{end}}">首页</a>
+                <a href="/logs" class="{{if eq .ActiveNav "logs"}}active{{end}}">日志</a>
+                <a href="/settings" class="{{if eq .ActiveNav "settings"}}active{{end}}">设置</a>
+            </nav>
+            <div class="topbar-user">
+                <span>{{.Username}}</span>
+                <a href="/logout" class="logout-link">退出</a>
+            </div>
+        </header>
+        <main class="content">
+            {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+            {{if .Success}}<div class="alert alert-success">{{.Success}}</div>{{end}}
+            {{template "content" .}}
+        </main>
+    </div>
+    {{else}}
+    <div class="content-full">
+        {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+        {{if .Success}}<div class="alert alert-success">{{.Success}}</div>{{end}}
+        {{template "content" .}}
+    </div>
+    {{end}}
+</body>
+</html>

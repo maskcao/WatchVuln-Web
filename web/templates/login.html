@@ -1,0 +1,21 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<div class="login-container">
+    <div class="login-header">
+        <h1>WatchVuln</h1>
+        <p>漏洞监控控制台</p>
+    </div>
+    <form method="POST" action="/login">
+        {{if .Next}}<input type="hidden" name="next" value="{{.Next}}">{{end}}
+        <div class="form-group">
+            <label>用户名</label>
+            <input type="text" name="username" required autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label>密码</label>
+            <input type="password" name="password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-login">登录</button>
+    </form>
+</div>
+{{end}}
