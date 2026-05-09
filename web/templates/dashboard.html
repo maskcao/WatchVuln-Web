@@ -76,6 +76,7 @@
                 <th><a href="javascript:void(0)" onclick="doSort('create_time')" class="sort-link">添加时间 ↕</a></th>
                 <th>状态</th>
                 <th>标签</th>
+                <th>操作</th>
             </tr>
         </thead>
         <tbody>
@@ -89,9 +90,10 @@
                 <td>{{.CreateTime.Format "2006-01-02 15:04"}}</td>
                 <td>{{if .Pushed}}<span class="badge badge-success">已推送</span>{{else}}<span class="badge badge-warn">未推送</span>{{end}}</td>
                 <td>{{range .Tags}}<span class="tag">{{.}}</span>{{end}}</td>
+                <td>{{if not .Pushed}}<button class="btn btn-sm" onclick="pushVuln({{.ID}}, this)">推送</button>{{end}}</td>
             </tr>
             <tr class="vuln-detail" style="display:none">
-                <td colspan="8">
+                <td colspan="9">
                     <div class="detail-content">
                         {{if .Description}}<p><strong>描述:</strong> {{.Description}}</p>{{end}}
                         {{if .Solutions}}<p><strong>解决方案:</strong> {{.Solutions}}</p>{{end}}
@@ -101,7 +103,7 @@
                 </td>
             </tr>
             {{else}}
-            <tr><td colspan="8" style="text-align:center;padding:40px">暂无漏洞数据</td></tr>
+            <tr><td colspan="9" style="text-align:center;padding:40px">暂无漏洞数据</td></tr>
             {{end}}
         </tbody>
     </table>
@@ -180,7 +182,7 @@ function doSearch(page) {
 function renderTable(vulns) {
     var tbody = document.querySelector('.vuln-table tbody');
     if (!vulns || vulns.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px">暂无漏洞数据</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px">暂无漏洞数据</td></tr>';
         return;
     }
     var html = '';
@@ -189,6 +191,7 @@ function renderTable(vulns) {
         var cveLink = v.cve ? '<a href="https://nvd.nist.gov/vuln/detail/' + v.cve + '" target="_blank" onclick="event.stopPropagation()">' + v.cve + '</a>' : '-';
         var sevClass = 'severity severity-' + v.severity;
         var pushedBadge = v.pushed ? '<span class="badge badge-success">已推送</span>' : '<span class="badge badge-warn">未推送</span>';
+        var pushBtn = v.pushed ? '' : '<button class="btn btn-sm" onclick="pushVuln(' + v.id + ', this)">推送</button>';
         var tagsHtml = '';
         if (v.tags && v.tags.length) for (var j = 0; j < v.tags.length; j++) tagsHtml += '<span class="tag">' + he(v.tags[j]) + '</span>';
         var refsHtml = '';
@@ -200,8 +203,8 @@ function renderTable(vulns) {
         html += '<td class="vuln-title">' + he(v.title) + '</td><td>' + cveLink + '</td>';
         html += '<td><span class="' + sevClass + '">' + he(v.severity) + '</span></td>';
         html += '<td class="text-sm">' + he(v.from || '') + '</td><td>' + (v.disclosure || '') + '</td>';
-        html += '<td>' + createdAt + '</td><td>' + pushedBadge + '</td><td>' + tagsHtml + '</td></tr>';
-        html += '<tr class="vuln-detail" style="display:none"><td colspan="8"><div class="detail-content">';
+        html += '<td>' + createdAt + '</td><td>' + pushedBadge + '</td><td>' + tagsHtml + '</td><td>' + pushBtn + '</td></tr>';
+        html += '<tr class="vuln-detail" style="display:none"><td colspan="9"><div class="detail-content">';
         if (v.description) html += '<p><strong>描述:</strong> ' + he(v.description) + '</p>';
         if (v.solutions) html += '<p><strong>解决方案:</strong> ' + he(v.solutions) + '</p>';
         html += refsHtml + ghHtml + '</div></td></tr>';
@@ -266,6 +269,24 @@ function testPush() {
         .then(function(r) { return r.json(); })
         .then(function(resp) { alert(resp.data ? resp.data.message : (resp.error || '请求失败')); btn.disabled = false; btn.textContent = '测试推送'; })
         .catch(function() { btn.disabled = false; btn.textContent = '测试推送'; });
+}
+
+function pushVuln(id, btn) {
+    btn.disabled = true; btn.textContent = '推送中...';
+    fetch('/api/push?id=' + id, { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            if (resp.success) {
+                alert('推送成功');
+                btn.textContent = '已推送';
+                btn.className = 'btn btn-sm btn-disabled';
+                btn.disabled = true;
+            } else {
+                alert(resp.error || '推送失败');
+                btn.disabled = false; btn.textContent = '推送';
+            }
+        })
+        .catch(function() { btn.disabled = false; btn.textContent = '推送'; });
 }
 </script>
 {{end}}

@@ -86,6 +86,7 @@ func NewServer(app *ctrl.WatchVulnApp, config *ctrl.WatchVulnAppConfig) (*Server
 	mux.HandleFunc("/api/stats", s.requireAuth(s.handleAPIStats))
 	mux.HandleFunc("/api/trigger-collect", s.requireAuth(s.handleAPITriggerCollect))
 	mux.HandleFunc("/api/test-push", s.requireAuth(s.handleAPITestPush))
+	mux.HandleFunc("/api/push", s.requireAuth(s.handleAPIPushVuln))
 	mux.HandleFunc("/api/logs", s.requireAuth(s.handleAPILogs))
 	mux.HandleFunc("/api/export", s.requireAuth(s.handleAPIExport))
 	mux.HandleFunc("/api/sources", s.requireAuth(s.handleAPISources))

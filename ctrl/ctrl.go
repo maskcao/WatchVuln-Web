@@ -483,6 +483,39 @@ func (w *WatchVulnApp) TestPush() error {
 	return w.testPushMessage()
 }
 
+// PushVulnByID pushes a single vulnerability by its ID
+func (w *WatchVulnApp) PushVulnByID(ctx context.Context, id int) error {
+	dbVuln, err := w.db.VulnInformation.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("vulnerability not found: %d", id)
+	}
+
+	v := &grab.VulnInfo{
+		Title:        dbVuln.Title,
+		CVE:          dbVuln.Cve,
+		Severity:     grab.SeverityLevel(dbVuln.Severity),
+		Tags:         dbVuln.Tags,
+		Disclosure:   dbVuln.Disclosure,
+		From:         dbVuln.From,
+		Description:  dbVuln.Description,
+		GithubSearch: dbVuln.GithubSearch,
+		References:   dbVuln.References,
+		Solutions:    dbVuln.Solutions,
+	}
+
+	if err := w.pushVuln(v); err != nil {
+		return err
+	}
+
+	// Mark as pushed
+	_, err = dbVuln.Update().SetPushed(true).Save(ctx)
+	if err != nil {
+		w.log.Warnf("failed to mark vuln %d as pushed: %s", id, err)
+	}
+
+	return nil
+}
+
 func (w *WatchVulnApp) initData(ctx context.Context) ([]grab.Grabber, []grab.Grabber) {
 	var eg errgroup.Group
 	eg.SetLimit(len(w.grabbers))

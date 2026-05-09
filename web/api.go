@@ -296,6 +296,39 @@ func (s *Server) handleAPITestPush(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ---------- /api/push/:id ----------
+
+func (s *Server) handleAPIPushVuln(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, APIResponse{Success: false, Error: "method not allowed"})
+		return
+	}
+
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		writeJSON(w, APIResponse{Success: false, Error: "missing vuln id"})
+		return
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeJSON(w, APIResponse{Success: false, Error: "invalid vuln id"})
+		return
+	}
+
+	s.addLog("info", fmt.Sprintf("手动推送漏洞 ID: %d", id))
+	if err := s.app.PushVulnByID(r.Context(), id); err != nil {
+		s.addLog("error", fmt.Sprintf("推送漏洞失败: %v", err))
+		writeJSON(w, APIResponse{Success: false, Error: err.Error()})
+		return
+	}
+
+	s.addLog("info", fmt.Sprintf("漏洞 ID %d 推送成功", id))
+	writeJSON(w, APIResponse{
+		Success: true,
+		Data:    map[string]string{"message": "推送成功"},
+	})
+}
+
 // ---------- /api/logs ----------
 
 func (s *Server) handleAPILogs(w http.ResponseWriter, r *http.Request) {
